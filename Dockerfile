@@ -1,4 +1,12 @@
-# --- Étape 1 : build des assets front (Vite + Tailwind) ---
+# --- Étape 1 : dépendances PHP (Composer) ---
+FROM composer:2 AS vendor
+WORKDIR /app
+COPY composer.json composer.lock ./
+RUN composer install --no-dev --optimize-autoloader --no-interaction --no-scripts --ignore-platform-reqs
+COPY . .
+RUN composer dump-autoload --optimize --no-dev
+
+# --- Étape 2 : build des assets front (Vite + Tailwind) ---
 FROM node:20-alpine AS assets
 WORKDIR /app
 COPY package*.json ./
@@ -6,14 +14,15 @@ RUN npm install
 COPY . .
 RUN npm run build
 
-# --- Étape 2 : image finale PHP (Nginx + PHP-FPM) ---
+# --- Étape 3 : image finale PHP (Nginx + PHP-FPM) ---
 FROM richarvey/nginx-php-fpm:3.1.6
 
 COPY . .
-COPY --from=assets /app/public/build /var/www/html/public/build
+COPY --from=vendor /app/vendor ./vendor
+COPY --from=assets /app/public/build ./public/build
 
 # Config image
-ENV SKIP_COMPOSER 0
+ENV SKIP_COMPOSER 1
 ENV WEBROOT /var/www/html/public
 ENV PHP_ERRORS_STDERR 1
 ENV RUN_SCRIPTS 1
