@@ -34,5 +34,9 @@ ENV APP_DEBUG false
 ENV LOG_CHANNEL stderr
 
 ENV COMPOSER_ALLOW_SUPERUSER 1
+ENV RUN_SCRIPTS 0
 
-CMD ["/start.sh"]
+COPY docker/start.sh /usr/local/bin/start-app.sh
+RUN chmod +x /usr/local/bin/start-app.sh
+
+CMD ["/usr/local/bin/start-app.sh"]
