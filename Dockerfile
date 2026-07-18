@@ -37,5 +37,8 @@ ENV RUN_SCRIPTS 0
 COPY docker/start.sh /usr/local/bin/start-app.sh
 RUN chmod +x /usr/local/bin/start-app.sh
 
+RUN echo "request_terminate_timeout = 300" >> /usr/local/etc/php-fpm.d/www.conf
+RUN echo "max_execution_time = 300" >> /usr/local/etc/php/conf.d/laravel.ini
+
 CMD ["/usr/local/bin/start-app.sh"]
 
