@@ -39,6 +39,7 @@ RUN chmod +x /usr/local/bin/start-app.sh
 
 RUN echo "request_terminate_timeout = 300" >> /usr/local/etc/php-fpm.d/www.conf
 RUN echo "max_execution_time = 300" >> /usr/local/etc/php/conf.d/laravel.ini
+RUN echo "memory_limit = 512M" >> /usr/local/etc/php/conf.d/laravel.ini
 
 CMD ["/usr/local/bin/start-app.sh"]
 
