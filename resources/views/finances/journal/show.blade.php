@@ -100,6 +100,7 @@
             <div class="table-responsive">
                 <table class="table table-sm table-hover mb-0" style="table-layout:fixed;">
                     <thead class="table-light">
+
                         <tr>
                             <th style="width:90px;">Date</th>
                             <th style="width:250px;">Libellé</th>
@@ -108,6 +109,7 @@
                             <th style="width:100px;">Mode paiement</th>
                             <th style="width:120px;">Compte</th>
                             <th style="width:120px;" class="text-end">Montant</th>
+                            <th style="width:60px;" class="text-center">Versement</th>
                             @if(auth()->user()->peutSupprimer())
                             <th style="width:60px;" class="text-center">Suppr.</th>
                             @endif
@@ -120,7 +122,7 @@
                             @if($d->rubrique?->chap_code !== $currentChap)
                                 @php $currentChap = $d->rubrique?->chap_code; @endphp
                                 <tr class="table-{{ str_starts_with($currentChap ?? '', 'A') ? 'success' : 'danger' }} opacity-75">
-                                    <td colspan="{{ auth()->user()->peutSupprimer() ? 8 : 7 }}" class="fw-bold small py-1">
+                                    <td colspan="{{ auth()->user()->peutSupprimer() ? 9 : 8 }}" class="fw-bold small py-1">
                                         {{ $d->rubrique?->chapitre?->chap_code }} —
                                         {{ $d->rubrique?->chapitre?->chap_libelle }}
                                     </td>
@@ -159,6 +161,20 @@
                                     text-{{ str_starts_with($d->rubrique?->chap_code ?? '', 'A') ? 'success' : 'danger' }}">
                                     {{ number_format($d->j_detail_montant, 0, ',', ' ') }} Ar
                                 </td>
+
+                                <td class="text-center">
+                                    @if($d->rub_rubrique_id == 502 || $d->rubrique?->rubrique_libelle === 'versement_especes')
+                                        <button type="button"
+                                                class="btn btn-outline-primary btn-sm py-0 px-1 btn-versement"
+                                                data-numero="{{ $d->j_detail_numero }}"
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#modalVersement">
+                                            <i class="bi bi-cash-stack"></i>
+                                        </button>
+                                    @endif
+                                </td>
+
+
                                 @if(auth()->user()->peutSupprimer())
                                 <td class="text-center">
                                     <form action="{{ route('finances.ecritures.destroy', $d->j_detail_numero) }}"
@@ -174,7 +190,7 @@
                             </tr>
                         @empty
                         <tr>
-                            <td colspan="{{ auth()->user()->peutSupprimer() ? 8 : 7 }}"
+                            <td colspan="{{ auth()->user()->peutSupprimer() ? 9 : 8 }}"
                                 class="text-center text-muted py-3">
                                 Aucune écriture pour ce mois.
                             </td>
@@ -288,4 +304,211 @@
     </div>
     @endif
 </div>
+
+{{-- Modal Détail Versement --}}
+<div class="modal fade" id="modalVersement" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-cash-stack me-2"></i>Détail du versement</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <table class="table table-sm table-bordered">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Libellé</th>
+                            <th class="text-end">Montant</th>
+                            <th>Remarque</th>
+                            <th style="width:100px;" class="text-center">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="versementTableBody">
+                        {{-- Rempli dynamiquement en JS --}}
+                    </tbody>
+                    <tfoot>
+                        <tr class="fw-bold">
+                            <td>Total</td>
+                            <td class="text-end" id="versementTotal">0 Ar</td>
+                            <td colspan="2"></td>
+                        </tr>
+                    </tfoot>
+                </table>
+
+                <hr>
+
+                <form id="formAddVersement" class="row g-2 align-items-end">
+                    <div class="col-md-4">
+                        <label class="form-label small fw-semibold">Libellé</label>
+                        <input type="text" name="libelle" id="versementLibelle" class="form-control form-control-sm" required>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small fw-semibold">Montant (Ar)</label>
+                        <input type="number" name="montant" id="versementMontant" step="0.01" min="0" class="form-control form-control-sm text-end" required>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small fw-semibold">Remarque</label>
+                        <input type="text" name="remarque" id="versementRemarque" class="form-control form-control-sm">
+                    </div>
+                    <div class="col-md-2">
+                        <button type="submit" class="btn btn-success btn-sm w-100">
+                            <i class="bi bi-plus-lg"></i> Ajouter
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+    let currentNumero = null;
+
+    const modal = document.getElementById('modalVersement');
+    const tbody = document.getElementById('versementTableBody');
+    const totalEl = document.getElementById('versementTotal');
+    const formAdd = document.getElementById('formAddVersement');
+
+    // Ouverture du modal : récupère le numero et charge les lignes
+    document.querySelectorAll('.btn-versement').forEach(btn => {
+        btn.addEventListener('click', function () {
+            currentNumero = this.dataset.numero;
+            chargerLignes();
+        });
+    });
+
+    function formatMontant(val) {
+        return new Intl.NumberFormat('fr-FR').format(val) + ' Ar';
+    }
+
+    function chargerLignes() {
+        fetch(`/finances/versements/${currentNumero}`)
+            .then(res => res.json())
+            .then(lignes => {
+                tbody.innerHTML = '';
+                let total = 0;
+
+                lignes.forEach(l => {
+                    total += parseFloat(l.montant);
+                    tbody.innerHTML += `
+                        <tr data-id="${l.id}">
+                            <td class="libelle-cell">${l.libelle}</td>
+                            <td class="text-end montant-cell">${formatMontant(l.montant)}</td>
+                            <td class="remarque-cell">${l.remarque ?? ''}</td>
+                            <td class="text-center">
+                                <button class="btn btn-outline-secondary btn-sm py-0 px-1 btn-edit-versement"
+                                    data-id="${l.id}"
+                                    data-libelle="${l.libelle}"
+                                    data-montant="${l.montant}"
+                                    data-remarque="${l.remarque ?? ''}">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <button class="btn btn-outline-danger btn-sm py-0 px-1 btn-delete-versement"
+                                    data-id="${l.id}">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                });
+
+                totalEl.textContent = formatMontant(total);
+                attacherActions();
+            });
+    }
+
+    function attacherActions() {
+        // Suppression
+        document.querySelectorAll('.btn-delete-versement').forEach(btn => {
+            btn.addEventListener('click', function () {
+                if (!confirm('Supprimer cette ligne ?')) return;
+                const id = this.dataset.id;
+
+                fetch(`/finances/versements/${currentNumero}/${id}`, {
+                    method: 'DELETE',
+                    headers: { 'X-CSRF-TOKEN': csrfToken }
+                })
+                .then(res => res.json())
+                .then(() => chargerLignes());
+            });
+        });
+
+        // Édition (remplace la ligne par un formulaire inline)
+        document.querySelectorAll('.btn-edit-versement').forEach(btn => {
+            btn.addEventListener('click', function () {
+                const row = this.closest('tr');
+                const id = this.dataset.id;
+                const libelle = this.dataset.libelle;
+                const montant = this.dataset.montant;
+                const remarque = this.dataset.remarque;
+
+                row.innerHTML = `
+                    <td><input type="text" class="form-control form-control-sm edit-libelle" value="${libelle}"></td>
+                    <td><input type="number" step="0.01" class="form-control form-control-sm text-end edit-montant" value="${montant}"></td>
+                    <td><input type="text" class="form-control form-control-sm edit-remarque" value="${remarque}"></td>
+                    <td class="text-center">
+                        <button class="btn btn-success btn-sm py-0 px-1 btn-save-versement" data-id="${id}">
+                            <i class="bi bi-check-lg"></i>
+                        </button>
+                    </td>
+                `;
+
+                row.querySelector('.btn-save-versement').addEventListener('click', function () {
+                    const newLibelle = row.querySelector('.edit-libelle').value;
+                    const newMontant = row.querySelector('.edit-montant').value;
+                    const newRemarque = row.querySelector('.edit-remarque').value;
+
+                    fetch(`/finances/versements/${currentNumero}/${id}`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': csrfToken
+                        },
+                        body: JSON.stringify({
+                            libelle: newLibelle,
+                            montant: newMontant,
+                            remarque: newRemarque
+                        })
+                    })
+                    .then(res => res.json())
+                    .then(() => chargerLignes());
+                });
+            });
+        });
+    }
+
+    // Ajout d'une nouvelle ligne
+    formAdd.addEventListener('submit', function (e) {
+        e.preventDefault();
+
+        const libelle = document.getElementById('versementLibelle').value;
+        const montant = document.getElementById('versementMontant').value;
+        const remarque = document.getElementById('versementRemarque').value;
+
+        fetch(`/finances/versements/${currentNumero}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': csrfToken
+            },
+            body: JSON.stringify({ libelle, montant, remarque })
+        })
+        .then(res => res.json())
+        .then(() => {
+            formAdd.reset();
+            chargerLignes();
+        });
+    });
+
+    // Reset du modal à la fermeture
+    modal.addEventListener('hidden.bs.modal', function () {
+        tbody.innerHTML = '';
+        totalEl.textContent = '0 Ar';
+        formAdd.reset();
+    });
+});
+</script>
+@endpush
 @endsection

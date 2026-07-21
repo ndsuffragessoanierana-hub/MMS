@@ -16,6 +16,7 @@ use App\Http\Controllers\Finance\RecapController;
 use App\Http\Controllers\Finance\BudgetController;
 use App\Http\Controllers\Finance\ExerciceController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Finance\VersementController;
 
 // ── Page d'accueil publique ──
 Route::get('/', function () {
@@ -97,6 +98,15 @@ Route::middleware(['auth'])->group(function () {
 
         // Exercices
         Route::post('exercices', [ExerciceController::class, 'store'])->name('exercices.store');
+
+        
+    });
+
+    Route::prefix('finances/versements')->name('finances.versements.')->group(function () {
+        Route::get('/{j_detail_numero}', [VersementController::class, 'index'])->name('index');
+        Route::post('/{j_detail_numero}', [VersementController::class, 'store'])->name('store');
+        Route::put('/{j_detail_numero}/{id}', [VersementController::class, 'update'])->name('update');
+        Route::delete('/{j_detail_numero}/{id}', [VersementController::class, 'destroy'])->name('destroy');
     });
 });
 

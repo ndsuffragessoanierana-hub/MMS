@@ -256,8 +256,8 @@
                     <div class="row g-2">
                         @foreach([
                             ['route' => 'fideles.create',           'icon' => 'person-plus-fill',    'label' => 'Nouveau fidèle',     'color' => 'primary'],
-                            ['route' => 'finances.journals.create', 'icon' => 'journal-plus',         'label' => 'Ouvrir un journal',  'color' => 'success'],
-                            ['route' => 'inventaire.create',        'icon' => 'box-seam',             'label' => 'Ajouter équipement', 'color' => 'warning'],
+                            ['route' => 'finances.journals.create', 'icon' => 'journal-plus', 'label' => 'Ouvrir un journal', 'color' => 'success'],
+                            ['route' => 'inventaire.create',        'icon' => 'box-seam',     'label' => 'Ajouter équipement', 'color' => 'warning'],
                             ['route' => 'finances.recap.evolution', 'icon' => 'graph-up-arrow',       'label' => 'Évolution solde',    'color' => 'info'],
                             ['route' => 'finances.recap.rubrique',  'icon' => 'list-columns-reverse', 'label' => 'Récap. rubrique',    'color' => 'secondary'],
                             ['route' => 'agenda.create',            'icon' => 'calendar-plus',        'label' => 'Ajouter événement',  'color' => 'danger'],
