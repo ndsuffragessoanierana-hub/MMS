@@ -30,9 +30,12 @@ class Fitaovana extends Model
         'valeur_acquisition'=> 'decimal:2',
     ];
 
-    public function scopeParType(Builder $q, int $typeId): Builder {
-        return $query->where('tf_id_type_fitaovana', (string) $typeId);
+    public function scopeParType(Builder $q, int|string $typeId): Builder
+    {
+        return $q->where('tf_id_type_fitaovana', (string) $typeId);
     }
+
+ 
     public function scopeRecherche(Builder $q, string $terme): Builder {
         return $q->where(fn($s) => $s
             ->where('denomination',  'ilike', "%{$terme}%")
