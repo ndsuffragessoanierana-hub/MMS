@@ -31,7 +31,7 @@ class Fitaovana extends Model
     ];
 
     public function scopeParType(Builder $q, int $typeId): Builder {
-        return $q->where('tf_id_type_fitaovana', $typeId);
+        return $query->where('tf_id_type_fitaovana', (string) $typeId);
     }
     public function scopeRecherche(Builder $q, string $terme): Builder {
         return $q->where(fn($s) => $s

@@ -33,7 +33,7 @@ class InventaireController extends Controller
             $query->recherche($request->recherche);
         }
         if ($request->filled('type_id')) {
-            $query->parType((int) $request->type_id);
+            $query->parType($request->type_id);
         }
 
         $fitaovanas = $query->paginate(20)->withQueryString();
