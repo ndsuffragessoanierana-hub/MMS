@@ -210,6 +210,11 @@
                 <i class="bi bi-bookmarks-fill"></i> Types d'équipements
             </a>
         </li>
+        <li class="nav-item">
+            <a class="nav-link" href="{{ route('emplacements.index') }}">
+                <i class="bi bi-geo-alt"></i> Emplacements
+            </a>
+        </li>
 
         <li class="nav-section mt-2">Pastoral</li>
 

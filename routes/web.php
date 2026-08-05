@@ -17,6 +17,9 @@ use App\Http\Controllers\Finance\BudgetController;
 use App\Http\Controllers\Finance\ExerciceController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Finance\VersementController;
+use App\Http\Controllers\EmplacementController;
+
+
 
 // ── Page d'accueil publique ──
 Route::get('/', function () {
@@ -109,5 +112,17 @@ Route::middleware(['auth'])->group(function () {
         Route::delete('/{j_detail_numero}/{id}', [VersementController::class, 'destroy'])->name('destroy');
     });
 });
+
+
+Route::resource('emplacements', EmplacementController::class);
+
+// Assignation / déplacement d'un équipement depuis la fiche emplacement
+Route::post('emplacements/{emplacement}/equipements', [EmplacementController::class, 'addEquipment'])
+    ->name('emplacements.equipements.add');
+
+Route::delete('emplacements/{emplacement}/equipements/{fitaovana}', [EmplacementController::class, 'removeEquipment'])
+    ->name('emplacements.equipements.remove');
+
+
 
 require __DIR__.'/auth.php';

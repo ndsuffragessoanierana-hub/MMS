@@ -15,7 +15,8 @@
 namespace App\Http\Controllers;
 
 use Barryvdh\DomPDF\Facade\Pdf;
-use App\Models\{Fitaovana, TypeFitaovana};
+use App\Models\{Fitaovana, TypeFitaovana, Emplacement};
+use App\Services\EquipmentLocationService;
 use Illuminate\Http\Request;
 
 class InventaireController extends Controller
@@ -57,13 +58,14 @@ class InventaireController extends Controller
         $this->authorize_role('ajout');
         $types    = TypeFitaovana::orderBy('libelle_type_fitaovana')->get();
         $fitaovana = new Fitaovana();
-        return view('inventaire.create', compact('types', 'fitaovana'));
+        $emplacements = Emplacement::orderBy('libelle_place')->get();
+        return view('inventaire.create', compact('types', 'fitaovana', 'emplacements'));
     }
 
     // ------------------------------------------------------------------
     // STORE
     // ------------------------------------------------------------------
-    public function store(Request $request)
+    public function store(Request $request, EquipmentLocationService $locationService)
     {
         $this->authorize_role('ajout');
 
@@ -77,6 +79,7 @@ class InventaireController extends Controller
             'no_inventaire'        => 'nullable|string|max:50|unique:fitaovanas,no_inventaire',
             'tf_id_type_fitaovana' => 'nullable|exists:type_fitaovanas,id_type_fitaovana',
             'remarque'             => 'nullable|string',
+            'idplace'              => 'nullable|exists:emplacement,idplace',
         ]);
 
         // Générer le contenu QR code
@@ -87,7 +90,15 @@ class InventaireController extends Controller
             'date'   => $validated['date_acquisition'] ?? '',
         ]);
 
+        // L'emplacement n'est pas une colonne de fitaovana, il est géré à part via la table pivot
+        $idplace = $validated['idplace'] ?? null;
+        unset($validated['idplace']);
+
         $fitaovana = Fitaovana::create($validated);
+
+        if ($idplace) {
+            $locationService->moveTo($fitaovana->idfitaovana, $idplace);
+        }
 
         return redirect()
             ->route('inventaire.show', $fitaovana->idfitaovana)
@@ -100,7 +111,14 @@ class InventaireController extends Controller
     public function show(Fitaovana $inventaire)
     {
         $inventaire->load('typeFitaovana');
-        return view('inventaire.show', compact('inventaire'));
+
+        $emplacement = \DB::table('empla_fitaovana')
+            ->join('emplacement', 'emplacement.idplace', '=', 'empla_fitaovana.emp_idplace')
+            ->where('empla_fitaovana.fit_idfitaovana', $inventaire->idfitaovana)
+            ->select('emplacement.*')
+            ->first();
+
+        return view('inventaire.show', compact('inventaire', 'emplacement'));
     }
 
     // ------------------------------------------------------------------
@@ -110,13 +128,20 @@ class InventaireController extends Controller
     {
         $this->authorize_role('modif');
         $types = TypeFitaovana::orderBy('libelle_type_fitaovana')->get();
-        return view('inventaire.edit', compact('inventaire', 'types'));
+
+        $emplacements = Emplacement::orderBy('libelle_place')->get();
+
+        $currentIdplace = \DB::table('empla_fitaovana')
+            ->where('fit_idfitaovana', $inventaire->idfitaovana)
+            ->value('emp_idplace');
+
+        return view('inventaire.edit', compact('inventaire', 'types', 'emplacements', 'currentIdplace'));
     }
 
     // ------------------------------------------------------------------
     // UPDATE
     // ------------------------------------------------------------------
-    public function update(Request $request, Fitaovana $inventaire)
+    public function update(Request $request, Fitaovana $inventaire, EquipmentLocationService $locationService)
     {
         $this->authorize_role('modif');
 
@@ -130,6 +155,7 @@ class InventaireController extends Controller
             'no_inventaire'        => "nullable|string|max:50|unique:fitaovanas,no_inventaire,{$inventaire->idfitaovana},idfitaovana",
             'tf_id_type_fitaovana' => 'nullable|exists:type_fitaovanas,id_type_fitaovana',
             'remarque'             => 'nullable|string',
+            'idplace'              => 'nullable|exists:emplacement,idplace',
         ]);
 
         $validated['qr_text'] = json_encode([
@@ -138,7 +164,15 @@ class InventaireController extends Controller
             'ref' => $validated['reference'] ?? '',
         ]);
 
+        // L'emplacement n'est pas une colonne de fitaovana, il est géré à part via la table pivot
+        $idplace = $validated['idplace'] ?? null;
+        unset($validated['idplace']);
+
         $inventaire->update($validated);
+
+        if ($idplace) {
+            $locationService->moveTo($inventaire->idfitaovana, $idplace);
+        }
 
         return redirect()
             ->route('inventaire.show', $inventaire->idfitaovana)
