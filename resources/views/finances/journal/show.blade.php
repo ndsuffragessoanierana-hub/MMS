@@ -462,7 +462,7 @@
         </div>
     </div>
 </div>
-@push('style')
+@push('styles')
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/choices.js/10.2.0/styles/choices.min.css">
 <style>
     /* Aligne la hauteur de Choices.js sur les form-select-sm de Bootstrap */
