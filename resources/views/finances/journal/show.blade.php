@@ -462,19 +462,45 @@
         </div>
     </div>
 </div>
-@push('styles')
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/choices.js/10.2.0/styles/choices.min.css">
+@push('style')
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js@10.2.0/public/assets/styles/choices.min.css">
 <style>
-    /* Aligne la hauteur de Choices.js sur les form-select-sm de Bootstrap */
-    .js-select-search + .choices .choices__inner {
+    .choices__inner {
         min-height: calc(1.5em + 0.5rem + 2px);
         padding: 0.25rem 0.5rem;
         font-size: 0.875rem;
     }
+
+    .choices__list--dropdown,
+    .choices__list--dropdown .choices__item,
+    .choices__input {
+        font-size: 0.8rem;
+    }
+
+    .choices__list--dropdown .choices__group .choices__heading {
+        font-size: 0.7rem;
+    }
+
+    /* Le menu déroulant peut être plus large que le champ, pour éviter les retours à la ligne */
+    .choices {
+        position: relative;
+    }
+    .choices__list--dropdown {
+        width: max-content;
+        min-width: 100%;
+        max-width: 420px;
+    }
+
+    /* Empêche les coupures au milieu des mots */
+    .choices__list--dropdown .choices__item {
+        white-space: normal;
+        word-break: normal;
+        overflow-wrap: normal;
+    }
 </style>
 @endpush
 @push('scripts')
-<script src="https://cdnjs.cloudflare.com/ajax/libs/choices.js/10.2.0/choices.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/choices.js@10.2.0/public/assets/scripts/choices.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     // Active la recherche sur toutes les listes rubrique/compte
