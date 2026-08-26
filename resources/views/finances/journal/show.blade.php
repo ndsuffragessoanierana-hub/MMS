@@ -8,7 +8,7 @@
 <div class="container-fluid py-4">
 
     {{-- En-tête --}}
-    
+
     <div class="d-flex justify-content-between align-items-start mb-4">
         <div class="d-flex gap-3 align-items-center">
             <a href="{{ route('finances.journals.index') }}" class="btn btn-outline-secondary btn-sm">
@@ -92,6 +92,11 @@
     </div>
 
     {{-- Liste des écritures --}}
+    @php
+        $peutModifierEcriture = auth()->user()->peutModifier();
+        $peutSupprimerEcriture = auth()->user()->peutSupprimer();
+        $colspanTotal = 8 + ($peutModifierEcriture ? 1 : 0) + ($peutSupprimerEcriture ? 1 : 0);
+    @endphp
     <div class="card shadow-sm mb-4">
         <div class="card-header d-flex justify-content-between align-items-center">
             <span class="fw-semibold"><i class="bi bi-list-ul me-2"></i>Écritures du mois</span>
@@ -110,7 +115,10 @@
                             <th style="width:120px;">Compte</th>
                             <th style="width:120px;" class="text-end">Montant</th>
                             <th style="width:60px;" class="text-center">Versement</th>
-                            @if(auth()->user()->peutSupprimer())
+                            @if($peutModifierEcriture)
+                            <th style="width:60px;" class="text-center">Modif.</th>
+                            @endif
+                            @if($peutSupprimerEcriture)
                             <th style="width:60px;" class="text-center">Suppr.</th>
                             @endif
                         </tr>
@@ -122,7 +130,7 @@
                             @if($d->rubrique?->chap_code !== $currentChap)
                                 @php $currentChap = $d->rubrique?->chap_code; @endphp
                                 <tr class="table-{{ str_starts_with($currentChap ?? '', 'A') ? 'success' : 'danger' }} opacity-75">
-                                    <td colspan="{{ auth()->user()->peutSupprimer() ? 9 : 8 }}" class="fw-bold small py-1">
+                                    <td colspan="{{ $colspanTotal }}" class="fw-bold small py-1">
                                         {{ $d->rubrique?->chapitre?->chap_code }} —
                                         {{ $d->rubrique?->chapitre?->chap_libelle }}
                                     </td>
@@ -138,7 +146,7 @@
                                     <span class="text-muted">{{ $d->rubrique?->rubrique_libelle }}</span>
                                 </td>
                                 <td class="small text-muted">{{ $d->rubrique?->chap_code }}</td>
-                                
+
                                 <td class="small">
                                     @if($d->j_detail_mode_paie)
                                         @php
@@ -174,8 +182,25 @@
                                     @endif
                                 </td>
 
+                                @if($peutModifierEcriture)
+                                <td class="text-center">
+                                    <button type="button"
+                                            class="btn btn-outline-secondary btn-sm py-0 px-1 btn-edit-ecriture"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#modalEditEcriture"
+                                            data-numero="{{ $d->j_detail_numero }}"
+                                            data-date="{{ $d->j_detail_date->format('Y-m-d') }}"
+                                            data-libelle="{{ $d->j_detail_libelle }}"
+                                            data-rubrique="{{ $d->rub_rubrique_id }}"
+                                            data-mode="{{ $d->j_detail_mode_paie }}"
+                                            data-compte="{{ $d->cpt_no_compte }}"
+                                            data-montant="{{ $d->j_detail_montant }}">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                </td>
+                                @endif
 
-                                @if(auth()->user()->peutSupprimer())
+                                @if($peutSupprimerEcriture)
                                 <td class="text-center">
                                     <form action="{{ route('finances.ecritures.destroy', $d->j_detail_numero) }}"
                                           method="POST"
@@ -190,7 +215,7 @@
                             </tr>
                         @empty
                         <tr>
-                            <td colspan="{{ auth()->user()->peutSupprimer() ? 9 : 8 }}"
+                            <td colspan="{{ $colspanTotal }}"
                                 class="text-center text-muted py-3">
                                 Aucune écriture pour ce mois.
                             </td>
@@ -200,7 +225,7 @@
                     @if($details->count())
                     <tfoot class="table-light fw-bold">
                         <tr>
-                            <td colspan="{{ auth()->user()->peutSupprimer() ? 6 : 5 }}"></td>
+                            <td colspan="{{ $peutSupprimerEcriture ? 6 : 5 }}"></td>
                             <td class="text-end">
                                 <div class="text-success font-monospace">
                                     ↓ {{ number_format($totalRecettes, 0, ',', ' ') }} Ar
@@ -209,7 +234,8 @@
                                     ↑ {{ number_format($totalDepenses, 0, ',', ' ') }} Ar
                                 </div>
                             </td>
-                            @if(auth()->user()->peutSupprimer())<td></td>@endif
+                            @if($peutModifierEcriture)<td></td>@endif
+                            @if($peutSupprimerEcriture)<td></td>@endif
                         </tr>
                     </tfoot>
                     @endif
@@ -305,6 +331,82 @@
     @endif
 </div>
 
+{{-- Modal Modification Écriture --}}
+@if($peutModifierEcriture)
+<div class="modal fade" id="modalEditEcriture" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <form id="formEditEcriture" method="POST">
+                @csrf
+                @method('PUT')
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-pencil me-2"></i>Modifier l'écriture</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-2 align-items-end">
+                        <div class="col-md-3">
+                            <label class="form-label small fw-semibold required">Date</label>
+                            <input type="date" name="j_detail_date" id="editDate" class="form-control form-control-sm" required>
+                        </div>
+                        <div class="col-md-9">
+                            <label class="form-label small fw-semibold required">Libellé</label>
+                            <input type="text" name="j_detail_libelle" id="editLibelle" class="form-control form-control-sm" required>
+                        </div>
+                        <div class="col-md-5">
+                            <label class="form-label small fw-semibold required">Rubrique</label>
+                            <select name="rub_rubrique_id" id="editRubrique" class="form-select form-select-sm" required>
+                                <option value="">— Choisir —</option>
+                                @foreach($rubriques->groupBy('chap_code') as $chap => $rubs)
+                                    <optgroup label="{{ $rubs->first()->chapitre?->chap_libelle ?? $chap }}">
+                                        @foreach($rubs as $r)
+                                            <option value="{{ $r->rubrique_id }}">
+                                                {{ $r->rubrique_id }} — {{ $r->rubrique_libelle }}
+                                            </option>
+                                        @endforeach
+                                    </optgroup>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label small fw-semibold">Mode paiement</label>
+                            <select name="j_detail_mode_paie" id="editModePaie" class="form-select form-select-sm">
+                                <option value="">—</option>
+                                <option value="ESP">ESPECE</option>
+                                <option value="BFV">BRED</option>
+                                <option value="BNI">BNI</option>
+                                <option value="VIR">VIREMENT</option>
+                                <option value="MOB">MOBILE</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-semibold">Compte</label>
+                            <select name="cpt_no_compte" id="editCompte" class="form-select form-select-sm">
+                                <option value="">— Aucun —</option>
+                                @foreach($comptes as $c)
+                                    <option value="{{ $c->no_compte }}">
+                                        {{ $c->no_compte }} — {{ $c->libelle_compte }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label small fw-semibold required">Montant (Ar)</label>
+                            <input type="number" name="j_detail_montant" id="editMontant"
+                                   step="0.01" min="0" class="form-control form-control-sm text-end" required>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-success btn-sm"><i class="bi bi-check-lg me-1"></i>Enregistrer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+@endif
+
 {{-- Modal Détail Versement --}}
 <div class="modal fade" id="modalVersement" tabindex="-1">
     <div class="modal-dialog modal-lg">
@@ -361,6 +463,28 @@
     </div>
 </div>
 @push('scripts')
+@if($peutModifierEcriture)
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    // Gabarit d'URL pour l'update d'une écriture : "0" est remplacé par le vrai numéro
+    const editUrlTemplate = @json(route('finances.ecritures.update', ['detail' => '__NUM__']));
+
+    document.querySelectorAll('.btn-edit-ecriture').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            const form = document.getElementById('formEditEcriture');
+            form.action = editUrlTemplate.replace('__NUM__', this.dataset.numero);
+
+            document.getElementById('editDate').value     = this.dataset.date ?? '';
+            document.getElementById('editLibelle').value  = this.dataset.libelle ?? '';
+            document.getElementById('editRubrique').value = this.dataset.rubrique ?? '';
+            document.getElementById('editModePaie').value = this.dataset.mode ?? '';
+            document.getElementById('editCompte').value   = this.dataset.compte ?? '';
+            document.getElementById('editMontant').value  = this.dataset.montant ?? '';
+        });
+    });
+});
+</script>
+@endif
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     const csrfToken = document.querySelector('meta[name="csrf-token"]').content;

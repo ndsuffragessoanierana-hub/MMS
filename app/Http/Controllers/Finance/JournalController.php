@@ -1,31 +1,4 @@
 <?php
-// =============================================================================
-// ECAR — Module Finances : CRUD complet
-// Livre Journal · Rubriques · Chapitres · Comptes · Budget · Récapitulatif
-// =============================================================================
-// Fichiers à créer :
-//   app/Http/Controllers/Finance/JournalController.php
-//   app/Http/Controllers/Finance/RubriqueController.php
-//   app/Http/Controllers/Finance/ChapitreController.php
-//   app/Http/Controllers/Finance/CompteController.php
-//   app/Http/Controllers/Finance/BudgetController.php
-//   app/Http/Controllers/Finance/RecapController.php
-//   app/Http/Requests/StoreJournalRequest.php
-//   app/Http/Requests/StoreDetailJournalRequest.php
-//   app/Http/Requests/StoreRubriqueRequest.php
-//   routes/web.php (extrait finances)
-//   resources/views/finances/journal/index.blade.php
-//   resources/views/finances/journal/show.blade.php
-//   resources/views/finances/journal/_form_ecriture.blade.php
-//   resources/views/finances/rubriques/index.blade.php
-//   resources/views/finances/recap/index.blade.php
-//   resources/views/finances/dashboard.blade.php
-// =============================================================================
-
-
-// =============================================================================
-// FICHIER : app/Http/Controllers/Finance/JournalController.php
-// =============================================================================
 
 namespace App\Http\Controllers\Finance;
 
@@ -33,7 +6,9 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use App\Http\Controllers\Controller;
 use App\Models\{TJournal, TDetailJournal, TRubrique, Compte, Mois};
 use App\Http\Requests\{StoreJournalRequest, StoreDetailJournalRequest};
+use App\Services\JournalSoldeService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class JournalController extends Controller
 {
@@ -51,14 +26,12 @@ class JournalController extends Controller
             ->orderBy('journal_mois')
             ->get();
 
-        // Totaux annuels
         $totaux = TJournal::annee($annee)->selectRaw('
             SUM(journal_solde_bni)    as total_bni,
             SUM(journal_solde_bfv)    as total_bfv,
             SUM(journal_solde_caisse) as total_caisse
         ')->first();
 
-        // Années disponibles
         $annees = TJournal::selectRaw('DISTINCT journal_annee')
             ->orderByDesc('journal_annee')
             ->pluck('journal_annee');
@@ -73,7 +46,6 @@ class JournalController extends Controller
     {
         $this->authorize_role('ajout');
 
-        // Déterminer le prochain mois à créer
         $dernier = TJournal::orderByDesc('journal_annee')
             ->orderByDesc('journal_mois')
             ->first();
@@ -123,7 +95,6 @@ class JournalController extends Controller
             ->orderBy('j_detail_numero')
             ->get();
 
-        // Totaux par chapitre
         $totauxChapitres = $details->groupBy('rubrique.chap_code')->map(function ($items) {
             return [
                 'libelle' => $items->first()?->rubrique?->chapitre?->chap_libelle,
@@ -136,7 +107,6 @@ class JournalController extends Controller
         $totalDepenses = $details->filter(fn($d) => str_starts_with($d->rubrique?->chap_code ?? '', 'B'))
             ->sum('j_detail_montant');
 
-        // Pour le formulaire d'ajout d'écriture
         $rubriques = TRubrique::with('chapitre')->orderBy('rubrique_id')->get();
         $comptes   = Compte::actif()->get();
 
@@ -184,15 +154,24 @@ class JournalController extends Controller
     {
         $this->authorize_role('ajout');
 
-        TDetailJournal::create([
-            'j_detail_date'      => $request->j_detail_date,
-            'j_detail_libelle'   => $request->j_detail_libelle,
-            'j_detail_mode_paie' => $request->j_detail_mode_paie,
-            'j_detail_montant'   => $request->j_detail_montant,
-            'jrl_journal_id'     => $journal->journal_id,
-            'rub_rubrique_id'    => $request->rub_rubrique_id,
-            'cpt_no_compte'      => $request->cpt_no_compte ?: null,
-        ]);
+        DB::transaction(function () use ($request, $journal) {
+            $detail = TDetailJournal::create([
+                'j_detail_date'      => $request->j_detail_date,
+                'j_detail_libelle'   => $request->j_detail_libelle,
+                'j_detail_mode_paie' => $request->j_detail_mode_paie,
+                'j_detail_montant'   => $request->j_detail_montant,
+                'jrl_journal_id'     => $journal->journal_id,
+                'rub_rubrique_id'    => $request->rub_rubrique_id,
+                'cpt_no_compte'      => $request->cpt_no_compte ?: null,
+            ]);
+
+            app(JournalSoldeService::class)->enregistrerEcriture(
+                $journal->journal_id,
+                $detail->j_detail_mode_paie,
+                $detail->rub_rubrique_id,
+                $detail->j_detail_montant
+            );
+        });
 
         return back()->with('success', 'Écriture ajoutée.');
     }
@@ -201,7 +180,29 @@ class JournalController extends Controller
     public function updateEcriture(StoreDetailJournalRequest $request, TDetailJournal $detail)
     {
         $this->authorize_role('modif');
-        $detail->update($request->validated());
+
+        DB::transaction(function () use ($request, $detail) {
+            $service = app(JournalSoldeService::class);
+
+            // Annule l'effet de l'ancienne écriture avant de la modifier
+            $service->annulerEcriture(
+                $detail->jrl_journal_id,
+                $detail->j_detail_mode_paie,
+                $detail->rub_rubrique_id,
+                $detail->j_detail_montant
+            );
+
+            $detail->update($request->validated());
+
+            // Applique l'effet de la nouvelle écriture
+            $service->enregistrerEcriture(
+                $detail->jrl_journal_id,
+                $detail->j_detail_mode_paie,
+                $detail->rub_rubrique_id,
+                $detail->j_detail_montant
+            );
+        });
+
         return back()->with('success', 'Écriture modifiée.');
     }
 
@@ -209,8 +210,19 @@ class JournalController extends Controller
     public function destroyEcriture(TDetailJournal $detail)
     {
         $journalId = $detail->jrl_journal_id;
-        $detail->delete();
-        return redirect()->route('finances.journals.show', $journalId)  // ← corrigé
+
+        DB::transaction(function () use ($detail, $journalId) {
+            app(JournalSoldeService::class)->annulerEcriture(
+                $journalId,
+                $detail->j_detail_mode_paie,
+                $detail->rub_rubrique_id,
+                $detail->j_detail_montant
+            );
+
+            $detail->delete();
+        });
+
+        return redirect()->route('finances.journals.show', $journalId)
             ->with('success', 'Écriture supprimée.');
     }
 
@@ -225,19 +237,12 @@ class JournalController extends Controller
         }
     }
 
-    
-    // =============================================================================
-    // Dans : app/Http/Controllers/Finance/JournalController.php
-    // Ajoutez cette méthode dans la classe JournalController
-    // =============================================================================
     public function exportPdf(TJournal $journal)
     {
         $journal->load('mois');
 
         $periode = $journal->mois?->libelle_mois_fr . ' ' . $journal->journal_annee;
 
-
-        // ── Détail des écritures avec colonnes ventilées par mode de paiement ──
         $details = \DB::table('t_detail_journal as d')
             ->join('t_rubrique as r',  'r.rubrique_id', '=', 'd.rub_rubrique_id')
             ->join('chapitre   as c',  'c.chap_code',   '=', 'r.chap_code')
@@ -257,26 +262,17 @@ class JournalController extends Controller
                 d.j_detail_montant,
                 r.chap_code,
                 c.chap_libelle,
-
-                -- Recette / Dépense globale
                 CASE WHEN c.chap_code LIKE 'A%' THEN d.j_detail_montant ELSE 0 END AS recette_g,
                 CASE WHEN c.chap_code LIKE 'B%' THEN d.j_detail_montant ELSE 0 END AS depense_g,
-
-                -- Espèces
                 CASE WHEN c.chap_code LIKE 'A%' AND d.j_detail_mode_paie = 'ESP' THEN d.j_detail_montant ELSE 0 END AS recette_num,
                 CASE WHEN c.chap_code LIKE 'B%' AND d.j_detail_mode_paie = 'ESP' THEN d.j_detail_montant ELSE 0 END AS depense_num,
-
-                -- BRED (BFV)
                 CASE WHEN c.chap_code LIKE 'A%' AND d.j_detail_mode_paie = 'BFV' THEN d.j_detail_montant ELSE 0 END AS recette_bfv,
                 CASE WHEN c.chap_code LIKE 'B%' AND d.j_detail_mode_paie = 'BFV' THEN d.j_detail_montant ELSE 0 END AS depense_bfv,
-
-                -- BNI
                 CASE WHEN c.chap_code LIKE 'A%' AND d.j_detail_mode_paie = 'BNI' THEN d.j_detail_montant ELSE 0 END AS recette_bni,
                 CASE WHEN c.chap_code LIKE 'B%' AND d.j_detail_mode_paie = 'BNI' THEN d.j_detail_montant ELSE 0 END AS depense_bni
             ")
             ->get();
 
-        // ── Récapitulatif par rubrique (recette/dépense) ──
         $recap = \DB::table('t_detail_journal as d')
             ->join('t_rubrique as r', 'r.rubrique_id', '=', 'd.rub_rubrique_id')
             ->join('chapitre   as c', 'c.chap_code',   '=', 'r.chap_code')
@@ -298,7 +294,6 @@ class JournalController extends Controller
             ")
             ->get();
 
-        // ── Solde courant (ce journal) ──
         $soldeCourant = (object)[
             'journal_solde_bni'    => $journal->journal_solde_bni,
             'journal_solde_bfv'    => $journal->journal_solde_bfv,
@@ -306,7 +301,6 @@ class JournalController extends Controller
             'total'                => $journal->solde_total,
         ];
 
-        // ── Solde précédent (journal du mois précédent) ──
         $journalPrecedent = TJournal::where(function($q) use ($journal) {
                 if ($journal->journal_mois == 1) {
                     $q->where('journal_mois',  12)
@@ -327,7 +321,6 @@ class JournalController extends Controller
         $totalRecettes = $recap->sum('recette');
         $totalDepenses = $recap->sum('depense');
 
-        // ── Génération PDF ──
         $pdf = Pdf::loadView('pdf.journal', compact(
             'journal',
             'periode',
@@ -344,5 +337,4 @@ class JournalController extends Controller
 
         return $pdf->download($filename);
     }
-    
 }
