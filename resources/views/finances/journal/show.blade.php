@@ -271,8 +271,8 @@
                     </div>
                     <div class="col-md-2">
                         <label class="form-label small fw-semibold required">Rubrique</label>
-                        <select name="rub_rubrique_id"
-                                class="form-select form-select-sm @error('rub_rubrique_id') is-invalid @enderror">
+                        <select name="rub_rubrique_id" id="addRubrique"
+                                class="form-select form-select-sm js-select-search @error('rub_rubrique_id') is-invalid @enderror">
                             <option value="">— Choisir —</option>
                             @foreach($rubriques->groupBy('chap_code') as $chap => $rubs)
                                 <optgroup label="{{ $rubs->first()->chapitre?->chap_libelle ?? $chap }}">
@@ -300,7 +300,7 @@
                     </div>
                     <div class="col-md-2">
                         <label class="form-label small fw-semibold">Compte</label>
-                        <select name="cpt_no_compte" class="form-select form-select-sm">
+                        <select name="cpt_no_compte" id="addCompte" class="form-select form-select-sm js-select-search">
                             <option value="">— Aucun —</option>
                             @foreach($comptes as $c)
                                 <option value="{{ $c->no_compte }}"
@@ -355,7 +355,7 @@
                         </div>
                         <div class="col-md-5">
                             <label class="form-label small fw-semibold required">Rubrique</label>
-                            <select name="rub_rubrique_id" id="editRubrique" class="form-select form-select-sm" required>
+                            <select name="rub_rubrique_id" id="editRubrique" class="form-select form-select-sm js-select-search" required>
                                 <option value="">— Choisir —</option>
                                 @foreach($rubriques->groupBy('chap_code') as $chap => $rubs)
                                     <optgroup label="{{ $rubs->first()->chapitre?->chap_libelle ?? $chap }}">
@@ -381,7 +381,7 @@
                         </div>
                         <div class="col-md-3">
                             <label class="form-label small fw-semibold">Compte</label>
-                            <select name="cpt_no_compte" id="editCompte" class="form-select form-select-sm">
+                            <select name="cpt_no_compte" id="editCompte" class="form-select form-select-sm js-select-search">
                                 <option value="">— Aucun —</option>
                                 @foreach($comptes as $c)
                                     <option value="{{ $c->no_compte }}">
@@ -462,11 +462,36 @@
         </div>
     </div>
 </div>
+@push('styles')
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/choices.js/10.2.0/styles/choices.min.css">
+<style>
+    /* Aligne la hauteur de Choices.js sur les form-select-sm de Bootstrap */
+    .js-select-search + .choices .choices__inner {
+        min-height: calc(1.5em + 0.5rem + 2px);
+        padding: 0.25rem 0.5rem;
+        font-size: 0.875rem;
+    }
+</style>
+@endpush
 @push('scripts')
-@if($peutModifierEcriture)
+<script src="https://cdnjs.cloudflare.com/ajax/libs/choices.js/10.2.0/choices.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    // Gabarit d'URL pour l'update d'une écriture : "0" est remplacé par le vrai numéro
+    // Active la recherche sur toutes les listes rubrique/compte
+    const searchableSelects = {};
+    document.querySelectorAll('.js-select-search').forEach(function (el) {
+        searchableSelects[el.id] = new Choices(el, {
+            searchEnabled: true,
+            shouldSort: false,
+            itemSelectText: '',
+            placeholder: true,
+            searchPlaceholderValue: 'Rechercher...',
+            noResultsText: 'Aucun résultat',
+        });
+    });
+
+    @if($peutModifierEcriture)
+    // Gabarit d'URL pour l'update d'une écriture : "__NUM__" est remplacé par le vrai numéro
     const editUrlTemplate = @json(route('finances.ecritures.update', ['detail' => '__NUM__']));
 
     document.querySelectorAll('.btn-edit-ecriture').forEach(function (btn) {
@@ -476,15 +501,21 @@ document.addEventListener('DOMContentLoaded', function () {
 
             document.getElementById('editDate').value     = this.dataset.date ?? '';
             document.getElementById('editLibelle').value  = this.dataset.libelle ?? '';
-            document.getElementById('editRubrique').value = this.dataset.rubrique ?? '';
             document.getElementById('editModePaie').value = this.dataset.mode ?? '';
-            document.getElementById('editCompte').value   = this.dataset.compte ?? '';
             document.getElementById('editMontant').value  = this.dataset.montant ?? '';
+
+            // Pour les selects Choices.js, on passe par leur API plutôt que .value
+            if (searchableSelects['editRubrique']) {
+                searchableSelects['editRubrique'].setChoiceByValue(this.dataset.rubrique ?? '');
+            }
+            if (searchableSelects['editCompte']) {
+                searchableSelects['editCompte'].setChoiceByValue(this.dataset.compte ?? '');
+            }
         });
     });
+    @endif
 });
 </script>
-@endif
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     const csrfToken = document.querySelector('meta[name="csrf-token"]').content;

@@ -35,6 +35,8 @@ class TJournal extends Model
     public function scopeMois(Builder $q, int $mois): Builder    { return $q->where('journal_mois', $mois); }
     public function scopeDernier(Builder $q): Builder            { return $q->orderByDesc('journal_id')->limit(1); }
 
+    public $timestamps = false;
+
     public function getSoldeTotalAttribute(): float
     {
         return (float)$this->journal_solde_bni
