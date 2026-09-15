@@ -293,12 +293,12 @@
                 <th style="width:55px;">Rubrique</th>
                 <th style="width:90px;">Recette (Ar)</th>
                 <th style="width:90px;">Dépense (Ar)</th>
-                <th style="width:80px;">Espèces R</th>
-                <th style="width:80px;">Espèces D</th>
-                <th style="width:80px;">BRED R</th>
-                <th style="width:80px;">BRED D</th>
-                <th style="width:80px;">BNI R</th>
-                <th style="width:80px;">BNI D</th>
+                <th style="width:80px;">Esp. Recette</th>
+                <th style="width:80px;">Esp. Dépense</th>
+                <th style="width:80px;">BRED Recette</th>
+                <th style="width:80px;">BRED Dépense</th>
+                <th style="width:80px;">BNI Recette</th>
+                <th style="width:80px;">BNI Dépense</th>
             </tr>
         </thead>
         <tbody>
