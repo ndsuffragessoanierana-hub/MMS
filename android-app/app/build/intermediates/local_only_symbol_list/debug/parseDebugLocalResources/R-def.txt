@@ -1,0 +1,18 @@
+R_DEF: Internal format may change without notice
+local
+color background
+color primary
+color primary_dark
+id errorMessage
+id errorView
+id progressBar
+id retryButton
+id swipeRefreshLayout
+id webView
+layout activity_main
+mipmap ic_launcher
+mipmap ic_launcher_round
+string app_name
+string connection_error
+string retry
+style Theme.EcarSoanierana

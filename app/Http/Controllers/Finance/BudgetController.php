@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Finance;
 
+use Barryvdh\DomPDF\Facade\Pdf;
 use App\Http\Controllers\Controller;
 use App\Models\{LigneBudget, LigneBudgetMensuel, Exercice, TRubrique, Mois};
 use Illuminate\Http\Request;
@@ -20,9 +21,11 @@ class BudgetController extends Controller
         $exercice   = Exercice::find($exerciceId);
 
         $rubriques = TRubrique::with([
-            'chapitre',
-            'ligneBudgets' => fn($q) => $q->where('id_exercice', $exerciceId)
-        ])->orderBy('chap_code')->orderBy('rubrique_id')->get();
+                'chapitre',
+                'ligneBudgets' => fn($q) => $q->where('id_exercice', $exerciceId)
+            ])
+            ->where(fn($q) => $q->where('chap_code', 'like', 'A%')->orWhere('chap_code', 'like', 'B%'))
+            ->orderBy('chap_code')->orderBy('rubrique_id')->get();
 
         return view('finances.budget.annuel', compact('exercices', 'exercice', 'rubriques'));
     }
@@ -39,7 +42,6 @@ class BudgetController extends Controller
 
                 $montant = is_numeric($ligne['montant'] ?? null) ? (float)$ligne['montant'] : 0;
 
-                // updateOrInsert évite le problème de clé primaire Eloquent
                 DB::table('ligne_budget')->updateOrInsert(
                     [
                         'id_exercice'     => $request->id_exercice,
@@ -56,6 +58,42 @@ class BudgetController extends Controller
         return back()->with('success', 'Budget annuel enregistré.');
     }
 
+    // ------------------------------------------------------------------
+    // PDF — Budget annuel
+    // ------------------------------------------------------------------
+    public function exportPdfAnnuel(Request $request)
+    {
+        $exerciceId = $request->get('id_exercice');
+        $exercice   = Exercice::find($exerciceId);
+
+        $rubriques = TRubrique::with([
+                'chapitre',
+                'ligneBudgets' => fn($q) => $q->where('id_exercice', $exerciceId)
+            ])
+            ->where(fn($q) => $q->where('chap_code', 'like', 'A%')->orWhere('chap_code', 'like', 'B%'))
+            ->orderBy('chap_code')->orderBy('rubrique_id')->get();
+
+        $totalRecettes = 0;
+        $totalDepenses = 0;
+        foreach ($rubriques as $r) {
+            $montant = $r->ligneBudgets->first()?->lg_bdg_montant ?? 0;
+            if (str_starts_with($r->chap_code, 'A')) {
+                $totalRecettes += $montant;
+            } else {
+                $totalDepenses += $montant;
+            }
+        }
+
+        $pdf = Pdf::loadView('pdf.budget_annuel', compact(
+            'exercice', 'rubriques', 'totalRecettes', 'totalDepenses'
+        ))->setPaper('a4', 'portrait');
+
+        
+        $filename = 'budget_annuel_' . $exerciceId . '.pdf';
+
+        return $pdf->download($filename);
+    }
+
     // ─────────────────────────────────────────────
     // BUDGET MENSUEL
     // ─────────────────────────────────────────────
@@ -68,9 +106,11 @@ class BudgetController extends Controller
         $moisListe  = Mois::all();
 
         $rubriques = TRubrique::with([
-            'chapitre',
-            'ligneBudgetMensuels' => fn($q) => $q->where('id_exercice', $exerciceId)
-        ])->orderBy('chap_code')->orderBy('rubrique_id')->get();
+                'chapitre',
+                'ligneBudgetMensuels' => fn($q) => $q->where('id_exercice', $exerciceId)
+            ])
+            ->where(fn($q) => $q->where('chap_code', 'like', 'A%')->orWhere('chap_code', 'like', 'B%'))
+            ->orderBy('chap_code')->orderBy('rubrique_id')->get();
 
         return view('finances.budget.mensuel', compact('exercices', 'exercice', 'rubriques', 'moisListe'));
     }
@@ -89,7 +129,6 @@ class BudgetController extends Controller
                     if (!is_numeric($mois)) continue;
                     $montant = is_numeric($montant) && $montant > 0 ? (float)$montant : 0;
 
-                    // updateOrInsert évite le problème de clé primaire composite
                     DB::table('ligne_budget_mensuel')->updateOrInsert(
                         [
                             'id_exercice'     => $request->id_exercice,
@@ -106,5 +145,31 @@ class BudgetController extends Controller
         }
 
         return back()->with('success', 'Budget mensuel enregistré.');
+    }
+
+    // ------------------------------------------------------------------
+    // PDF — Budget mensuel
+    // ------------------------------------------------------------------
+    public function exportPdfMensuel(Request $request)
+    {
+        $exerciceId = $request->get('id_exercice');
+        $exercice   = Exercice::find($exerciceId);
+        $moisListe  = Mois::all();
+
+        $rubriques = TRubrique::with([
+                'chapitre',
+                'ligneBudgetMensuels' => fn($q) => $q->where('id_exercice', $exerciceId)
+            ])
+            ->where(fn($q) => $q->where('chap_code', 'like', 'A%')->orWhere('chap_code', 'like', 'B%'))
+            ->orderBy('chap_code')->orderBy('rubrique_id')->get();
+
+        $pdf = Pdf::loadView('pdf.budget_mensuel', compact(
+            'exercice', 'rubriques', 'moisListe'
+        ))->setPaper('a4', 'landscape');
+
+        
+        $filename = 'budget_mensuel_' . $exerciceId . '.pdf';
+
+        return $pdf->download($filename);
     }
 }

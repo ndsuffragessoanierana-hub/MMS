@@ -60,6 +60,8 @@ class DashboardController extends Controller
             'partis'  => Fidele::partis()->count(),
         ];
 
+        // dd($statsFideles['total']); // ← temporaire, à retirer après test
+
         // Répartition par Faritra (pour graphique camembert)
         $repartFaritra = Faritra::withCount([
             'fideles as nb' => fn($q) => $q->where('quitte', 'N')

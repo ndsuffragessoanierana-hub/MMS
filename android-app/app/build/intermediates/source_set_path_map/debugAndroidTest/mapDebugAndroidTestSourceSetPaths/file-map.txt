@@ -1,0 +1,4 @@
+com.ecar.soanierana.test.app-androidTest-0 C:\laragon\www\MMS\android-app\app\build\generated\res\resValues\androidTest\debug
+com.ecar.soanierana.test.app-mergeDebugAndroidTestResources-1 C:\laragon\www\MMS\android-app\app\build\intermediates\incremental\debugAndroidTest\mergeDebugAndroidTestResources\merged.dir
+com.ecar.soanierana.test.app-mergeDebugAndroidTestResources-2 C:\laragon\www\MMS\android-app\app\build\intermediates\incremental\debugAndroidTest\mergeDebugAndroidTestResources\stripped.dir
+com.ecar.soanierana.test.app-debugAndroidTest-3 C:\laragon\www\MMS\android-app\app\build\intermediates\merged_res\debugAndroidTest\mergeDebugAndroidTestResources

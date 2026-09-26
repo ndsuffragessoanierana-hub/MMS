@@ -17,7 +17,14 @@
                 </small>
             @endif
         </div>
+        @if($exercice)
+        <a href="{{ route('finances.budget.mensuel.pdf', ['id_exercice' => $exercice->id_exercice]) }}"
+        class="btn btn-outline-danger btn-sm" target="_blank">
+            <i class="bi bi-file-earmark-pdf me-1"></i>Imprimer PDF
+        </a>
+        @endif
     </div>
+
 
     {{-- Sélecteur d'exercice --}}
     <div class="card shadow-sm mb-4">

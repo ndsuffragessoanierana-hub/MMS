@@ -93,11 +93,14 @@ Route::middleware(['auth'])->group(function () {
         Route::get('recap/compte/pdf',       [RecapController::class,   'pdfCompte'])
              ->name('recap.compte.pdf');
 
+
         // Budget
-        Route::get('budget/annuel',   [BudgetController::class, 'annuel'])->name('budget.annuel');
-        Route::post('budget/annuel',  [BudgetController::class, 'storeAnnuel'])->name('budget.annuel.store');
-        Route::get('budget/mensuel',  [BudgetController::class, 'mensuel'])->name('budget.mensuel');
-        Route::post('budget/mensuel', [BudgetController::class, 'storeMensuel'])->name('budget.mensuel.store');
+        Route::get('budget/annuel',       [BudgetController::class, 'annuel'])->name('budget.annuel');
+        Route::post('budget/annuel',      [BudgetController::class, 'storeAnnuel'])->name('budget.annuel.store');
+        Route::get('budget/annuel/pdf',   [BudgetController::class, 'exportPdfAnnuel'])->name('budget.annuel.pdf');
+        Route::get('budget/mensuel',      [BudgetController::class, 'mensuel'])->name('budget.mensuel');
+        Route::post('budget/mensuel',     [BudgetController::class, 'storeMensuel'])->name('budget.mensuel.store');
+        Route::get('budget/mensuel/pdf',  [BudgetController::class, 'exportPdfMensuel'])->name('budget.mensuel.pdf');
 
         // Exercices
         Route::post('exercices', [ExerciceController::class, 'store'])->name('exercices.store');

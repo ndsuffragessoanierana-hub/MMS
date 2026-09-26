@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">ECAR Soanierana</string>
+    <string name="connection_error">Impossible de charger l\'application. Vérifiez votre connexion internet puis réessayez.</string>
+    <string name="retry">Réessayer</string>
+</resources>
