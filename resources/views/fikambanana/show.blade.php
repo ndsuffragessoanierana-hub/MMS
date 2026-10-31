@@ -50,7 +50,7 @@
                                     </a>
                                 </td>
                                 <td class="small text-muted">
-                                    {{ \App\Models\MembreRole::find($f->pivot->code)?->libelle ?? '—' }}
+                                    {{ \App\Models\MembreRole::find($f->pivot->id_membre_role)?->libelle ?? '—' }}
                                 </td>
                                 <td class="small">
                                     {{ $f->pivot->date_adhesion ? \Carbon\Carbon::parse($f->pivot->date_adhesion)->format('d/m/Y') : '—' }}

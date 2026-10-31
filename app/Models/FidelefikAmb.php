@@ -20,11 +20,11 @@ class FidelefikAmb extends Model
 {
     protected $table    = 'fidele_fikamb';        // ← singulier
     protected $fillable = [
-        'idfikambanana', 'matricule', 'date_adhesion', 'code',
+        'idfikambanana', 'matricule', 'date_adhesion', 'id_membre_role',
     ];
     protected $casts = ['date_adhesion' => 'date'];
 
     public function fidele(): BelongsTo      { return $this->belongsTo(Fidele::class, 'matricule', 'matricule'); }
     public function fikambanana(): BelongsTo { return $this->belongsTo(Fikambanana::class, 'idfikambanana', 'idfikambanana'); }
-    public function role(): BelongsTo        { return $this->belongsTo(MembreRole::class, 'code', 'code'); }
+    public function role(): BelongsTo        { return $this->belongsTo(MembreRole::class, 'id_membre_role', 'code'); }
 }

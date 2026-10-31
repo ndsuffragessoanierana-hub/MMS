@@ -24,7 +24,7 @@ class Fikambanana extends Model
             'fidele_fikamb',           // ← singulier (table pivot)
             'idfikambanana',
             'matricule'
-        )->withPivot(['date_adhesion', 'code']);
+        )->withPivot(['date_adhesion', 'id_membre_role']);
     }
 
     public function membres(): HasMany {

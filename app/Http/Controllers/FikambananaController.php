@@ -107,7 +107,7 @@ class FikambananaController extends Controller
 
         $fikambanana->fideles()->attach($validated['matricule'], [
             'date_adhesion' => $validated['date_adhesion'] ?? now(),
-            'code'          => $validated['code'] ?? null,
+            'id_membre_role' => $validated['code'] ?? null,
         ]);
 
         return back()->with('success', 'Membre ajouté à l\'association.');
