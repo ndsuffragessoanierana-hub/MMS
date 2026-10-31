@@ -1,26 +1,22 @@
 <?php
 
 // =============================================================================
-// ECAR Masina Maria Mpanampy — Models Eloquent Laravel
-// Copiez chaque classe dans app/Models/ avec le nom de fichier indiqué
+// FICHIER : app/Models/Fikambanana.php
 // =============================================================================
 
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\{HasMany, BelongsTo, BelongsToMany};
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Foundation\Auth\User as Authenticatable;
-use Illuminate\Notifications\Notifiable;
+use Illuminate\Database\Eloquent\Relations\{HasMany, BelongsToMany};
 
-// =============================================================================
-// FICHIER : app/Models/Fikambanana.php
-// =============================================================================
 class Fikambanana extends Model
 {
     protected $table      = 'fikambanana';        // ← singulier
     protected $primaryKey = 'idfikambanana';
-    protected $fillable   = ['libelle_fikambanana', 'st_patron'];
+    public $incrementing  = false;                // clé non auto-incrémentée
+    protected $keyType    = 'string';             // clé texte (LMK, VVF, ...)
+
+    protected $fillable   = ['idfikambanana', 'libelle_fikambanana', 'st_patron'];
 
     public function fideles(): BelongsToMany {
         return $this->belongsToMany(
@@ -30,7 +26,10 @@ class Fikambanana extends Model
             'matricule'
         )->withPivot(['date_adhesion', 'code']);
     }
-    public function membres(): HasMany { return $this->hasMany(FidelefikAmb::class, 'idfikambanana', 'idfikambanana'); }
+
+    public function membres(): HasMany {
+        return $this->hasMany(FidelefikAmb::class, 'idfikambanana', 'idfikambanana');
+    }
 
     public function getNombresMembresAttribute(): int
     {
