@@ -15,13 +15,22 @@
         @csrf
         <div class="card shadow-sm">
             <div class="card-body row g-3">
-                <div class="col-md-8">
+                <div class="col-md-3">
+                    <label class="form-label fw-semibold required">Code</label>
+                    <input type="text" name="idfikambanana" value="{{ old('idfikambanana') }}"
+                           maxlength="4" style="text-transform: uppercase"
+                           placeholder="ex : LMK"
+                           class="form-control @error('idfikambanana') is-invalid @enderror">
+                    @error('idfikambanana')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    <div class="form-text">Code unique (lettres/chiffres, 4 max).</div>
+                </div>
+                <div class="col-md-6">
                     <label class="form-label fw-semibold required">Libellé</label>
                     <input type="text" name="libelle_fikambanana" value="{{ old('libelle_fikambanana') }}"
                            class="form-control @error('libelle_fikambanana') is-invalid @enderror">
                     @error('libelle_fikambanana')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-3">
                     <label class="form-label fw-semibold">Saint Patron</label>
                     <input type="text" name="st_patron" value="{{ old('st_patron') }}" class="form-control">
                 </div>
@@ -34,4 +43,3 @@
     </form>
 </div>
 @endsection
-

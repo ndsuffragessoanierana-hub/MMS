@@ -26,7 +26,14 @@ class FikambananaController extends Controller
     {
         $this->authorize_role('ajout');
 
+        // Le code est saisi manuellement (clé primaire texte) : on le normalise en majuscules
+        $request->merge([
+            'idfikambanana' => strtoupper(trim((string) $request->input('idfikambanana'))),
+        ]);
+
         $validated = $request->validate([
+            // Ajuster max:4 selon la longueur réelle de la colonne idfikambanana
+            'idfikambanana'       => 'required|string|max:4|alpha_num|unique:fikambanana,idfikambanana',
             'libelle_fikambanana' => 'required|string|max:200',
             'st_patron'           => 'nullable|string|max:100',
         ]);
@@ -63,6 +70,7 @@ class FikambananaController extends Controller
     {
         $this->authorize_role('modif');
 
+        // Le code (clé primaire) n'est pas modifiable
         $validated = $request->validate([
             'libelle_fikambanana' => 'required|string|max:200',
             'st_patron'           => 'nullable|string|max:100',
